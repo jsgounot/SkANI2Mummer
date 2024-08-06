@@ -1,0 +1,10 @@
+Ref_file	Query_file	ANI	Align_fraction_ref	Align_fraction_query	Ref_name	Query_name
+example/ecoliH5.fasta.gz	example/ecoliK12.fasta.gz	98.81	89.03	92.71	CP010169.1 Escherichia coli strain H5, complete genome	NC_000913.3 Escherichia coli str. K-12 substr. MG1655, complete genome
+example/ecoliH5.fasta.gz	example/ecoliO157.fasta.gz	98.00	85.16	74.86	CP010169.1 Escherichia coli strain H5, complete genome	NC_002695.2 Escherichia coli O157:H7 str. Sakai DNA, complete genome
+example/ecoliH5.fasta.gz	example/ecoliW.fasta.gz	98.65	89.80	88.56	CP010169.1 Escherichia coli strain H5, complete genome	NC_017635.1 Escherichia coli W, complete sequence
+example/kleb_NC.fasta.gz	example/kleb_PA.fasta.gz	99.08	91.27	92.50	NZ_CP081894.1 Klebsiella pneumoniae strain NC-01 chromosome, complete genome	NZ_CP081896.1 Klebsiella pneumoniae strain PA-01 chromosome, complete genome
+example/ecoliO157.fasta.gz	example/ecoliW.fasta.gz	97.84	76.44	85.76	NC_002695.2 Escherichia coli O157:H7 str. Sakai DNA, complete genome	NC_017635.1 Escherichia coli W, complete sequence
+example/kleb_MN.fasta.gz	example/kleb_NC.fasta.gz	99.02	90.57	89.89	NZ_CP081897.1 Klebsiella pneumoniae strain MN-03 chromosome, complete genome	NZ_CP081894.1 Klebsiella pneumoniae strain NC-01 chromosome, complete genome
+example/kleb_MN.fasta.gz	example/kleb_PA.fasta.gz	98.97	90.96	91.49	NZ_CP081897.1 Klebsiella pneumoniae strain MN-03 chromosome, complete genome	NZ_CP081896.1 Klebsiella pneumoniae strain PA-01 chromosome, complete genome
+example/ecoliK12.fasta.gz	example/ecoliO157.fasta.gz	98.08	88.25	74.50	NC_000913.3 Escherichia coli str. K-12 substr. MG1655, complete genome	NC_002695.2 Escherichia coli O157:H7 str. Sakai DNA, complete genome
+example/ecoliK12.fasta.gz	example/ecoliW.fasta.gz	98.53	91.66	86.81	NC_000913.3 Escherichia coli str. K-12 substr. MG1655, complete genome	NC_017635.1 Escherichia coli W, complete sequence

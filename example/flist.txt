@@ -1,0 +1,7 @@
+example/ecoliH5.fasta.gz
+example/ecoliK12.fasta.gz
+example/ecoliO157.fasta.gz
+example/ecoliW.fasta.gz
+example/kleb_MN.fasta.gz
+example/kleb_NC.fasta.gz
+example/kleb_PA.fasta.gz
