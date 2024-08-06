@@ -1,6 +1,6 @@
 ## SkANI2Mummer
 
-A simple python (>v.3 required) script to run SkANI first and then Mummer on pairs with distance >= `pd`. Can also run pairwise Mummer with SkANI prescreen. Minimal version of drep, without the clustering at the end.
+A simple python (>v.3 required) script to run SkANI first and then Mummer on pairs with distance >= `pd`. Can also run pairwise Mummer without SkANI pre-screen. Minimal version of drep, without the clustering at the end.
 
 ### Install
 
@@ -26,7 +26,7 @@ options:
   -q          Quiet TQDM (default: False)
   ```
 
-You can run the script with example the files:
+You can run the script with the example files:
 
 ```
 python skani2mummer.py example/flist.txt example/outfile.tsv.gz -t 16 -pd 85 -s example/skani.tsv
