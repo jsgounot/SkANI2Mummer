@@ -80,13 +80,13 @@ def list_from_skani(args):
     ntf = tempfile.NamedTemporaryFile()
     outfile = args.s if args.s else ntf.name
 
-    cmdline = f'skani triangle -l {args.flist} -o {outfile} -t {args.t} --sparse --min-af {args.pd}'
+    cmdline = f'skani triangle -l {args.flist} -o {outfile} -t {args.t} --sparse'
     run_cmdline(cmdline)
 
     with open(outfile) as f:
         header = next(f).strip().split('\t')
         reader = csv.DictReader(f, delimiter='\t', fieldnames=header)
-        lines = [line for line in reader]
+        lines = [line for line in reader if line['ANI'] >= args.pd]
 
     return header, lines
 
