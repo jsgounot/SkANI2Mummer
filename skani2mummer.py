@@ -83,10 +83,12 @@ def list_from_skani(args):
     cmdline = f'skani triangle -l {args.flist} -o {outfile} -t {args.t} --sparse'
     run_cmdline(cmdline)
 
+    pd = float(args.pd)
+
     with open(outfile) as f:
         header = next(f).strip().split('\t')
         reader = csv.DictReader(f, delimiter='\t', fieldnames=header)
-        lines = [line for line in reader if line['ANI'] >= args.pd]
+        lines = [line for line in reader if float(line['ANI']) >= pd]
 
     return header, lines
 
