@@ -51,7 +51,7 @@ def parse_dnadiff_report(fname):
 
     return subres
 
-def run_mummer_pair(line):
+def run_mummer_pair(line, outdir=None):
     s1, s2 = line['Ref_file'], line['Query_file']
 
     # Run delta first
@@ -73,47 +73,89 @@ def run_mummer_pair(line):
     report = prefix + '.report'
     rdata = parse_dnadiff_report(report)
 
+    if outdir:
+        idx = line['idx']
+        outfile = os.path.join(outdir, str(idx) + '.tar.gz')
+        transform = f'--transform="s|{tmp_dir.name[1:]}|./{idx}|"'
+        cmdline = f'tar --exclude="*.fasta" {transform} -czvf {outfile} {tmp_dir.name}'
+        run_cmdline(cmdline)
+
     line.update(rdata)
     return line
 
-def list_from_skani(args):
+def list_from_skani_other(args):
+    ntf = tempfile.NamedTemporaryFile()
+    outfile = args.s if args.s else ntf.name
+
+    cmdline = f'skani dist --ql {args.flist} --rl {args.a} -o {outfile} -t {args.t}'
+    run_cmdline(cmdline)
+
+    dist = float(args.d)
+
+    with open(outfile) as f:
+        header = next(f).strip().split('\t')
+        reader = csv.DictReader(f, delimiter='\t', fieldnames=header)
+        lines = [{'idx': idx, ** line} for idx, line in enumerate(reader) if float(line['ANI']) >= dist]
+
+    header.insert(0, 'idx')
+    return header, lines
+
+def list_from_skani_self(args):
     ntf = tempfile.NamedTemporaryFile()
     outfile = args.s if args.s else ntf.name
 
     cmdline = f'skani triangle -l {args.flist} -o {outfile} -t {args.t} --sparse'
     run_cmdline(cmdline)
 
-    pd = float(args.pd)
+    dist = float(args.d)
 
     with open(outfile) as f:
         header = next(f).strip().split('\t')
         reader = csv.DictReader(f, delimiter='\t', fieldnames=header)
-        lines = [line for line in reader if float(line['ANI']) >= pd]
+        lines = [{'idx': idx, ** line} for idx, line in enumerate(reader) if float(line['ANI']) >= dist]
+
+    header.insert(0, 'idx')
 
     return header, lines
 
-def list_from_flist(args):
+def list_from_flist_other(args):
+    with open(args.flist) as f:
+        f1 = [line.strip() for line in f]
+
+    with open(args.a) as f:
+        f2 = [line.strip() for line in f]
+
+    header = ['Ref_file', 'Query_file']
+    return header, [
+        {'idx': idx, 'Ref_file': p1, 'Query_file': p2}
+        for idx, (p1, p2) in enumerate(itertools.product(f1, f2))
+        ]
+
+def list_from_flist_self(args):
     with open(args.flist) as f:
         fnames = [line.strip() for line in f]
 
     header = ['Ref_file', 'Query_file']
     return header, [
-        {'Ref_file': p1, 'Query_file': p2}
-        for p1, p2 in itertools.combinations(fnames, 2)
+        {'idx': idx, 'Ref_file': p1, 'Query_file': p2}
+        for idx, (p1, p2) in enumerate(itertools.combinations(fnames, 2))
         ]
 
 def main(args):
-    pd = int(args.pd)
-    if pd == 100:
-        header, lines = list_from_flist(args)
-    elif 0 < pd < 100:
-        header, lines = list_from_skani(args)
+    dist, a = float(args.d), args.a
+    if dist == 100:
+        header, lines = list_from_flist_other(args) if a else list_from_flist_self(args)
+    elif 0 < dist < 100:
+        header, lines = list_from_skani_other(args) if a else list_from_skani_self(args)
     else:
-        raise Exception(f'pd value must be 0 < pd <= 100')
+        raise Exception(f'd value must be 0 < d <= 100')
 
     threads = int(args.t)
+    fun = lambda line: run_mummer_pair(line, outdir=args.m)
+    if args.m and not os.path.isdir(args.m): os.makedirs(args.m)
+
     with concurrent.futures.ThreadPoolExecutor(max_workers=threads) as executor:
-        e = executor.map(run_mummer_pair, lines)
+        e = executor.map(fun, lines)
         if itqdm and args.q == False: e = tqdm(e, total=len(lines))
         list(e)
 
@@ -131,8 +173,10 @@ parser = argparse.ArgumentParser(
 
 parser.add_argument('flist', help='File containing fasta paths')
 parser.add_argument('outfile', help='Outfile (compressed tsv.gz file)')
-parser.add_argument('-pd', default=90, help='Primary distance / Min distance for Skani. 100 = Ignore SkANI and run all pairs')
+parser.add_argument('-d', default=90, help='Min distance for Skani. 100 = Ignore SkANI and run all pairs')
+parser.add_argument('-a', nargs='?', help='Target genomes files list. Otherwise do a self-comparison.')
 parser.add_argument('-s', nargs='?', help='Skani output file. Temporary file if not provided.')
+parser.add_argument('-m', nargs='?', help='Mummer output dir. All mummer files will be compressed and store in the directory.')
 parser.add_argument('-t', default=1, help='number of CPUs')
 parser.add_argument('-q', action='store_true', help='Quiet TQDM')
 
