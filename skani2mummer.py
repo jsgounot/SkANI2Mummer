@@ -135,7 +135,7 @@ def list_from_flist_self(args):
     with open(args.flist) as f:
         fnames = [line.strip() for line in f]
 
-    header = ['Ref_file', 'Query_file']
+    header = ['idx', 'Ref_file', 'Query_file']
     return header, [
         {'idx': idx, 'Ref_file': p1, 'Query_file': p2}
         for idx, (p1, p2) in enumerate(itertools.combinations(fnames, 2))
