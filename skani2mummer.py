@@ -3,11 +3,15 @@ import argparse
 import os
 import csv
 import gzip
+import logging
 import tempfile
 import subprocess
 import shutil
 import concurrent.futures
 import itertools
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s', datefmt='%H:%M:%S')
+logger = logging.getLogger(__name__)
 
 try:
     from tqdm import tqdm
@@ -141,6 +145,14 @@ def list_from_flist_self(args):
         for idx, (p1, p2) in enumerate(itertools.combinations(fnames, 2))
         ]
 
+def _read_done_pairs(outfile):
+    done = set()
+    with gzip.open(outfile, 'rt') as f:
+        reader = csv.DictReader(f, delimiter='\t')
+        for row in reader:
+            done.add((row['Ref_file'], row['Query_file']))
+    return done
+
 def main(args):
     dist, a = float(args.d), args.a
     if dist == 100:
@@ -150,22 +162,64 @@ def main(args):
     else:
         raise Exception(f'd value must be 0 < d <= 100')
 
+    full_header = header + ['mummer_prc_aligned1', 'mummer_avg_identity1',
+                            'mummer_prc_aligned2', 'mummer_avg_identity2']
+    checkpoint = int(args.c)
+
+    resuming = False
+    if checkpoint > 0 and os.path.exists(args.outfile):
+        done = _read_done_pairs(args.outfile)
+        if done:
+            n_before = len(lines)
+            lines = [l for l in lines if (l['Ref_file'], l['Query_file']) not in done]
+            logger.info('Resuming: %d/%d pairs already done, %d remaining', len(done), n_before, len(lines))
+            resuming = True
+
+    logger.info('%d mummer pairs to run', len(lines))
+
     threads = int(args.t)
+    use_tqdm = itqdm and not args.q
     fun = lambda line: run_mummer_pair(line, outdir=args.m)
     if args.m and not os.path.isdir(args.m): os.makedirs(args.m)
 
+    n_done = 0
+    results = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=threads) as executor:
-        e = executor.map(fun, lines)
-        if itqdm and args.q == False: e = tqdm(e, total=len(lines))
-        list(e)
+        futures = [executor.submit(fun, line) for line in lines]
+        iterator = concurrent.futures.as_completed(futures)
+        if use_tqdm:
+            iterator = tqdm(iterator, total=len(lines))
 
-    with gzip.open(args.outfile, 'wt') as f:
-        header += ['mummer_prc_aligned1', 'mummer_avg_identity1', 'mummer_prc_aligned2', 'mummer_avg_identity2']
-        writer = csv.DictWriter(f, header, delimiter='\t')
+        if checkpoint > 0:
+            out_mode = 'at' if resuming else 'wt'
+            with gzip.open(args.outfile, out_mode) as f:
+                writer = csv.DictWriter(f, full_header, delimiter='\t')
+                if not resuming:
+                    writer.writeheader()
+                buffer = []
+                for future in iterator:
+                    buffer.append(future.result())
+                    n_done += 1
+                    if not use_tqdm and n_done % 1000 == 0:
+                        logger.info('%d/%d pairs done', n_done, len(lines))
+                    if len(buffer) >= checkpoint:
+                        writer.writerows(buffer)
+                        f.flush()
+                        buffer = []
+                if buffer:
+                    writer.writerows(buffer)
+        else:
+            for future in iterator:
+                results.append(future.result())
+                n_done += 1
+                if not use_tqdm and n_done % 1000 == 0:
+                    logger.info('%d/%d pairs done', n_done, len(lines))
 
-        writer.writeheader()
-        for line in lines:
-            writer.writerow(line)
+    if checkpoint == 0:
+        with gzip.open(args.outfile, 'wt') as f:
+            writer = csv.DictWriter(f, full_header, delimiter='\t')
+            writer.writeheader()
+            writer.writerows(results)
 
 parser = argparse.ArgumentParser(
     prog='python skani2mummer.py',
@@ -178,6 +232,7 @@ parser.add_argument('-a', nargs='?', help='Target genomes files list. Otherwise 
 parser.add_argument('-s', nargs='?', help='Skani output file. Temporary file if not provided.')
 parser.add_argument('-m', nargs='?', help='Mummer output dir. All mummer files will be compressed and store in the directory.')
 parser.add_argument('-t', default=1, help='number of CPUs')
+parser.add_argument('-c', default=0, type=int, help='Save results to output every N pairs for crash recovery (0 = disabled)')
 parser.add_argument('-q', action='store_true', help='Quiet TQDM')
 
 args = parser.parse_args()
